@@ -1,0 +1,5 @@
+*.o
+*.swp
+.Makefile.dep
+docs/dist
+cpu6502
