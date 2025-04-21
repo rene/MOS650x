@@ -1103,8 +1103,7 @@ static void do_nmi(void)
 	S_PUSH(pcl);
 
 	CPU.P.flags.I = 1;
-	CPU.P.flags.B = 0;
-	S_PUSH(CPU.P.reg);
+	S_PUSH(CPU.P.reg & ~BRK_FLAG_MASK); // clear B flag
 
 	/* Fetch PC from vector */
 	adl = sbus_read(0xfffa);
@@ -1137,8 +1136,7 @@ static void do_irq(void)
 	S_PUSH(pch);
 	S_PUSH(pcl);
 
-	CPU.P.flags.B = 0;
-	S_PUSH(CPU.P.reg);
+	S_PUSH(CPU.P.reg & ~BRK_FLAG_MASK); // clear B flag
 
 	/* Fetch PC from vector */
 	adl  = sbus_read(0xfffe);
