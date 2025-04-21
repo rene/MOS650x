@@ -97,6 +97,14 @@ The source code must be built with commands like the following:
 gcc -DSBUS_MEM -DCPU_THREAD_SAFE nes.c sbus.c cpu650x.c -lpthread -lrt -o nes-emu
 ```
 
+A minimal (sample) implementation can be found at [example](./example) directory:
+
+```sh
+cd example
+make
+./sample
+```
+
 # API overview
 
 This section presents a generic definition of the API implemented by the
@@ -210,7 +218,7 @@ called on every instruction execution.
 
 ## cpu_unregister_debug_cb()
 
-Unregister callback function registered with \nameref{sec:cpuregdb}.
+Unregister callback function registered with *cpu_register_debug_cb()*.
 
 **PARAMETERS**
 
