@@ -1464,7 +1464,7 @@ int main(int argc, const char *argv[])
 		cpu_clock();
 		usleep(30000);
 		if (CPU.clock_rcycles == 0) {
-			printf("%s | A:0x%x X:0x%x 0x0f00: 0x%x ",
+			printf("%s | A:0x%.2x\tX:0x%.2x\t0x0f00:\t0x%.2x ",
 			 op_codes[opcode].name, CPU.A, CPU.X, sbus_read(0xf00));
 			debug_pflags(&CPU);
 		}

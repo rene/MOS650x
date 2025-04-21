@@ -68,7 +68,7 @@ void sbus_destroy()
  */
 static void cpu_debug_cb(cpu650x_state_t debug_info)
 {
-	printf("cpu: %s | A:%d X:%d Y: %d P: %d | DATA: 0x%x | ADDR: 0x%x\n",
+	printf("cpu: %s | A:0x%.2x X:0x%.2x Y: 0x%.2x P: 0x%.2x | DATA: 0x%.2x | ADDR: 0x%.4x\n",
 			debug_info.opcode_name,
 			debug_info.CPU.A, debug_info.CPU.X,
 			debug_info.CPU.Y, debug_info.CPU.P.reg,
