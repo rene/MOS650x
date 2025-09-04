@@ -1320,6 +1320,17 @@ void cpu_trigger_irq(void)
 }
 
 /**
+ * Clear maskable interrupt
+ */
+void cpu_clear_irq(void)
+{
+	s_lock();
+	if (CPU.state == CPU_RUNNING)
+		CPU.irq_trigger = 0;
+	s_unlock();
+}
+
+/**
  * Trigger non-maskable interrupt
  */
 void cpu_trigger_nmi(void)

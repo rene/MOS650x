@@ -123,6 +123,7 @@ enum _CPU_STATE cpu_get_state();
 void cpu_clock(void);
 void cpu_reset(void);
 void cpu_trigger_irq(void);
+void cpu_clear_irq(void);
 void cpu_trigger_nmi(void);
 int cpu_register_kill_cb(void (*kill_cb)(cpu650x_state_t));
 int cpu_unregister_kill_cb(void);
