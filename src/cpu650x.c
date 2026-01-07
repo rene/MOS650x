@@ -196,35 +196,41 @@ static void (*cpu_kill_cb)(struct _cpu650x_state);
 static void (*cpu_debug_cb)(struct _cpu650x_state);
 
 #ifndef CPU_THREAD_SAFE
+/** Generic sem_t type */
+typedef int sem_t;
 /** Initialize semaphores */
-inline static int s_init(void) { return 0; };
+inline static int s_init(sem_t *sem) { return 0; };
 /** Destroy sempahores */
-inline static int s_destroy(void) { return 0; };
+inline static int s_destroy(sem_t *sem) { return 0; };
 /** Semaphore DOWN function */
-inline static int s_lock(void) { return 0; };
+inline static int s_lock(sem_t *sem) { return 0; };
 /** Semaphore UP function */
-inline static int s_unlock(void) { return 0; };
+inline static int s_unlock(sem_t *sem) { return 0; };
 #elif defined(_POSIX_C_SOURCE)
 #include <semaphore.h>
-/** Global mutex for atomic access */
-static sem_t cpu_lock;
 /** Initialize sempahores */
-inline static int s_init(void) {
-	return sem_init(&cpu_lock, 0, 1);
+inline static int s_init(sem_t *sem) {
+	return sem_init(sem, 0, 1);
 }
 /** Destroy sempahores */
-inline static int s_destroy(void) {
-	return sem_destroy(&cpu_lock);
+inline static int s_destroy(sem_t *sem) {
+	return sem_destroy(sem);
 };
 /** Semaphore DOWN function */
-inline static int s_lock(void) {
-	return sem_wait(&cpu_lock);
+inline static int s_lock(sem_t *sem) {
+	return sem_wait(sem);
 };
 /** Semaphore UP function */
-inline static int s_unlock() {
-	return sem_post(&cpu_lock);
+inline static int s_unlock(sem_t *sem) {
+	return sem_post(sem);
 };
 #endif
+/** Mutex for CPU instruction */
+static sem_t cpu_lock;
+/** Mutex for NMI */
+static sem_t nmi_lock;
+/** Mutex for IRQ */
+static sem_t irq_lock;
 
 /* ----------------------------------------------------------------------------
  * CPU instruction implementation
@@ -1122,7 +1128,10 @@ static void do_irq(void)
 	uint8_t pch, pcl, adh, adl;
 
 	/* Remove trigger */
-	CPU.irq_trigger--;
+	s_lock(&irq_lock);
+	if (CPU.irq_trigger > 0)
+		CPU.irq_trigger--;
+	s_unlock(&irq_lock);
 
 	/* Check if interrupt is allowed */
 	if (CPU.P.flags.I == 0)
@@ -1155,7 +1164,9 @@ static void do_irq(void)
 int cpu_init(void)
 {
 	cpu_debug_cb = NULL;
-	s_init();
+	s_init(&cpu_lock);
+	s_init(&nmi_lock);
+	s_init(&irq_lock);
 	return 0;
 }
 
@@ -1165,7 +1176,9 @@ int cpu_init(void)
  */
 int cpu_destroy(void)
 {
-	s_destroy();
+	s_destroy(&cpu_lock);
+	s_destroy(&nmi_lock);
+	s_destroy(&irq_lock);
 	return 0;
 }
 
@@ -1175,9 +1188,9 @@ int cpu_destroy(void)
  */
 int cpu_suspend(void)
 {
-	s_lock();
+	s_lock(&cpu_lock);
 	CPU.state = CPU_REQ_SUSPEND;
-	s_unlock();
+	s_unlock(&cpu_lock);
 	return 0;
 }
 
@@ -1187,9 +1200,9 @@ int cpu_suspend(void)
  */
 int cpu_wakeup(void)
 {
-	s_lock();
+	s_lock(&cpu_lock);
 	CPU.state = CPU_RUNNING;
-	s_unlock();
+	s_unlock(&cpu_lock);
 	return 0;
 }
 
@@ -1209,7 +1222,7 @@ void cpu_reset(void)
 {
 	uint8_t adh, adl;
 
-	s_lock();
+	s_lock(&cpu_lock);
 
 	CPU.A = 0;
 	CPU.X = 0;
@@ -1232,7 +1245,7 @@ void cpu_reset(void)
 
 	CPU.state = CPU_RUNNING;
 
-	s_unlock();
+	s_unlock(&cpu_lock);
 }
 
 /**
@@ -1242,10 +1255,10 @@ void cpu_clock(void)
 {
 	int cross;
 
-	s_lock();
+	s_lock(&cpu_lock);
 
 	if (CPU.state == CPU_SUSPENDED) {
-		s_unlock();
+		s_unlock(&cpu_lock);
 		return;
 	}
 
@@ -1255,7 +1268,7 @@ void cpu_clock(void)
 		 */
 		if (CPU.state == CPU_REQ_SUSPEND) {
 			CPU.state = CPU_SUSPENDED;
-			s_unlock();
+			s_unlock(&cpu_lock);
 			return;
 		}
 
@@ -1305,7 +1318,7 @@ void cpu_clock(void)
 	if (CPU.clock_rcycles >= 0)
 		CPU.clock_rcycles--;
 
-	s_unlock();
+	s_unlock(&cpu_lock);
 }
 
 /**
@@ -1313,10 +1326,10 @@ void cpu_clock(void)
  */
 void cpu_trigger_irq(void)
 {
-	s_lock();
+	s_lock(&irq_lock);
 	if (CPU.state == CPU_RUNNING)
 		CPU.irq_trigger++;
-	s_unlock();
+	s_unlock(&irq_lock);
 }
 
 /**
@@ -1324,10 +1337,10 @@ void cpu_trigger_irq(void)
  */
 void cpu_clear_irq(void)
 {
-	s_lock();
+	s_lock(&irq_lock);
 	if (CPU.state == CPU_RUNNING)
 		CPU.irq_trigger = 0;
-	s_unlock();
+	s_unlock(&irq_lock);
 }
 
 /**
@@ -1335,10 +1348,10 @@ void cpu_clear_irq(void)
  */
 void cpu_trigger_nmi(void)
 {
-	s_lock();
+	s_lock(&nmi_lock);
 	if (CPU.state == CPU_RUNNING)
 		CPU.nmi_trigger++;
-	s_unlock();
+	s_unlock(&nmi_lock);
 }
 
 /**
