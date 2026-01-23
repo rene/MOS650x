@@ -321,6 +321,9 @@ static void BRK(void)
 {
 	uint8_t pch, pcl, adh, adl;
 
+	if (CPU.P.flags.I == 1)
+		return;
+
 	/* Serve interrupt */
 	CPU.PC++;
 	pch = ((CPU.PC & 0xff00) >> 8) & 0xff;
@@ -1278,7 +1281,7 @@ void cpu_clock(void)
 		 */
 		if (CPU.nmi_trigger > 0) {
 			do_nmi();
-		} else if (CPU.irq_trigger > 0) {
+		} else if (CPU.irq_trigger > 0 && !CPU.P.flags.I) {
 			do_irq();
 		} else {
 			/* Each instruction takes different amount of clock cycles to be
