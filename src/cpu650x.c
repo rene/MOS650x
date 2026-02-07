@@ -321,9 +321,6 @@ static void BRK(void)
 {
 	uint8_t pch, pcl, adh, adl;
 
-	if (CPU.P.flags.I == 1)
-		return;
-
 	/* Serve interrupt */
 	CPU.PC++;
 	pch = ((CPU.PC & 0xff00) >> 8) & 0xff;
@@ -1103,7 +1100,7 @@ static void do_nmi(void)
 	uint8_t pch, pcl, adh, adl;
 
 	/* Remove trigger */
-	CPU.nmi_trigger--;
+	CPU.nmi_trigger = 0;
 
 	/* Serve interrupt */
 	pch = ((CPU.PC & 0xff00) >> 8) & 0xff;
@@ -1133,7 +1130,7 @@ static void do_irq(void)
 	/* Remove trigger */
 	s_lock(&irq_lock);
 	if (CPU.irq_trigger > 0)
-		CPU.irq_trigger--;
+		CPU.irq_trigger = 0;
 	s_unlock(&irq_lock);
 
 	/* Check if interrupt is allowed */
@@ -1331,7 +1328,7 @@ void cpu_trigger_irq(void)
 {
 	s_lock(&irq_lock);
 	if (CPU.state == CPU_RUNNING)
-		CPU.irq_trigger++;
+		CPU.irq_trigger = 1;
 	s_unlock(&irq_lock);
 }
 
@@ -1353,7 +1350,7 @@ void cpu_trigger_nmi(void)
 {
 	s_lock(&nmi_lock);
 	if (CPU.state == CPU_RUNNING)
-		CPU.nmi_trigger++;
+		CPU.nmi_trigger = 1;
 	s_unlock(&nmi_lock);
 }
 
