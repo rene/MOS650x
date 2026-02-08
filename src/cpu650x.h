@@ -129,5 +129,6 @@ int cpu_register_kill_cb(void (*kill_cb)(cpu650x_state_t));
 int cpu_unregister_kill_cb(void);
 int cpu_register_debug_cb(void (*debug_cb)(cpu650x_state_t));
 int cpu_unregister_debug_cb(void);
+unsigned long cpu_get_cycles();
 
 #endif /* __CPU650X_H__ */

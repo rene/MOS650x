@@ -1216,6 +1216,15 @@ enum _CPU_STATE cpu_get_state()
 }
 
 /**
+ * Return the total number of clock cycles of the CPU
+ * @return unsigned long Clock cycles
+ */
+unsigned long cpu_get_cycles()
+{
+	return CPU.clock_cycles;
+}
+
+/**
  * Reset CPU
  */
 void cpu_reset(void)
