@@ -87,9 +87,11 @@ struct _cpu650x {
 	unsigned long clock_cycles;
 	/** Remaining clock cycles for current instruction */
 	int8_t clock_rcycles;
-	/** IRQ triggering status */
-	uint8_t irq_trigger;
-	/** NMI triggering status */
+	/** IRQ pin status */
+	uint8_t irq_pin;
+	/** NMI pin status */
+	uint8_t nmi_pin;
+	/** NMI signal edge detection */
 	uint8_t nmi_trigger;
 	/** CPU running state */
 	enum _CPU_STATE state;
@@ -125,6 +127,7 @@ void cpu_reset(void);
 void cpu_trigger_irq(void);
 void cpu_clear_irq(void);
 void cpu_trigger_nmi(void);
+void cpu_clear_nmi(void);
 int cpu_register_kill_cb(void (*kill_cb)(cpu650x_state_t));
 int cpu_unregister_kill_cb(void);
 int cpu_register_debug_cb(void (*debug_cb)(cpu650x_state_t));

@@ -1099,7 +1099,7 @@ static void do_nmi(void)
 {
 	uint8_t pch, pcl, adh, adl;
 
-	/* Remove trigger */
+	/* NMI was triggered, set trigger back to zero */
 	CPU.nmi_trigger = 0;
 
 	/* Serve interrupt */
@@ -1108,8 +1108,9 @@ static void do_nmi(void)
 	S_PUSH(pch);
 	S_PUSH(pcl);
 
-	CPU.P.flags.I = 1;
 	S_PUSH(CPU.P.reg & ~BRK_FLAG_MASK); // clear B flag
+
+	CPU.P.flags.I = 1;
 
 	/* Fetch PC from vector */
 	adl = sbus_read(0xfffa);
@@ -1127,18 +1128,6 @@ static void do_irq(void)
 {
 	uint8_t pch, pcl, adh, adl;
 
-	/* Remove trigger */
-	s_lock(&irq_lock);
-	if (CPU.irq_trigger > 0)
-		CPU.irq_trigger = 0;
-	s_unlock(&irq_lock);
-
-	/* Check if interrupt is allowed */
-	if (CPU.P.flags.I == 0)
-		CPU.P.flags.I = 1;
-	else
-		return;
-
 	/* Serve interrupt */
 	pch = ((CPU.PC & 0xff00) >> 8) & 0xff;
 	pcl = (uint8_t)(CPU.PC & 0x00ff);
@@ -1146,6 +1135,8 @@ static void do_irq(void)
 	S_PUSH(pcl);
 
 	S_PUSH(CPU.P.reg & ~BRK_FLAG_MASK); // clear B flag
+
+	CPU.P.flags.I = 1;
 
 	/* Fetch PC from vector */
 	adl  = sbus_read(0xfffe);
@@ -1244,8 +1235,9 @@ void cpu_reset(void)
 	adh = sbus_read(0xfffd);
 	CPU.PC = (((uint16_t)adh << 8) & 0xff00) | (adl & 0xff);
 
-	/* Reset interrupt trigger status */
-	CPU.irq_trigger = 0;
+	/* Reset interrupt lines */
+	CPU.irq_pin = 1;
+	CPU.nmi_pin = 1;
 	CPU.nmi_trigger = 0;
 
 	/* Reset takes 8 clock cycles */
@@ -1264,7 +1256,7 @@ void cpu_trigger_irq(void)
 {
 	s_lock(&irq_lock);
 	if (CPU.state == CPU_RUNNING)
-		CPU.irq_trigger = 1;
+		CPU.irq_pin = 0;
 	s_unlock(&irq_lock);
 }
 
@@ -1275,7 +1267,7 @@ void cpu_clear_irq(void)
 {
 	s_lock(&irq_lock);
 	if (CPU.state == CPU_RUNNING)
-		CPU.irq_trigger = 0;
+		CPU.irq_pin = 1;
 	s_unlock(&irq_lock);
 }
 
@@ -1285,8 +1277,26 @@ void cpu_clear_irq(void)
 void cpu_trigger_nmi(void)
 {
 	s_lock(&nmi_lock);
-	if (CPU.state == CPU_RUNNING)
-		CPU.nmi_trigger = 1;
+	if (CPU.state == CPU_RUNNING) {
+		if (CPU.nmi_pin == 1) {
+			/* Edge detected! */
+			CPU.nmi_trigger = 1;
+			CPU.nmi_pin = 0;
+		}
+	}
+	s_unlock(&nmi_lock);
+}
+
+/**
+ * Release non-maskable interrupt pin
+ */
+void cpu_clear_nmi(void)
+{
+	s_lock(&nmi_lock);
+	if (CPU.state == CPU_RUNNING) {
+		CPU.nmi_trigger = 0;
+		CPU.nmi_pin = 1;
+	}
 	s_unlock(&nmi_lock);
 }
 
@@ -1388,9 +1398,9 @@ void cpu_clock(void)
 		 * instruction to finish in order to jump to server the interrupt.
 		 * NMI has priority over masked interrupt.
 		 */
-		if (CPU.nmi_trigger > 0) {
+		if (CPU.nmi_trigger == 1) {
 			do_nmi();
-		} else if (CPU.irq_trigger > 0 && !CPU.P.flags.I) {
+		} else if (CPU.irq_pin == 0 && !CPU.P.flags.I) {
 			do_irq();
 		} else {
 			/* Each instruction takes different amount of clock cycles to be
