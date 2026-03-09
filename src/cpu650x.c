@@ -1258,79 +1258,6 @@ void cpu_reset(void)
 }
 
 /**
- * Performs one clock tick in the CPU
- */
-void cpu_clock(void)
-{
-	int cross;
-
-	s_lock(&cpu_lock);
-
-	if (CPU.state == CPU_SUSPENDED) {
-		s_unlock(&cpu_lock);
-		return;
-	}
-
-	if (CPU.clock_rcycles <= 0) {
-		/* If the CPU was requested to suspend, now it's the time to go
-		 * offline
-		 */
-		if (CPU.state == CPU_REQ_SUSPEND) {
-			CPU.state = CPU_SUSPENDED;
-			s_unlock(&cpu_lock);
-			return;
-		}
-
-		/* If some interrupt was triggered, it should wait for current
-		 * instruction to finish in order to jump to server the interrupt.
-		 * NMI has priority over masked interrupt.
-		 */
-		if (CPU.nmi_trigger > 0) {
-			do_nmi();
-		} else if (CPU.irq_trigger > 0 && !CPU.P.flags.I) {
-			do_irq();
-		} else {
-			/* Each instruction takes different amount of clock cycles to be
-			 * executed. However, in this emulation the instruction will be
-			 * executed at once and will do nothing on the remaining cycles.
-			 */
-			opcode   = sbus_read(CPU.PC++);
-			addrmode = op_codes[opcode].mode;
-
-			/* Fetch operands and decode instruction */
-			cross = fetch_operand(op_codes[opcode].mode);
-			CPU.clock_rcycles = op_codes[opcode].clock_cycles;
-
-			/* Check if need to add a cycle */
-			if (cross && op_codes[opcode].add_cycles == 1)
-				CPU.clock_rcycles++;
-
-			/* Execute instruction */
-			op_codes[opcode].instruction();
-			if (cpu_debug_cb != NULL) {
-				state_info.opcode      = opcode;
-				state_info.opcode_name = op_codes[opcode].name;
-				state_info.address     = fetched_addr;
-				state_info.data        = fetched_data;
-				state_info.CPU         = CPU;
-				cpu_debug_cb(state_info);
-			}
-#ifdef CPU_PRINT_INSTRUCTION
-			printf("%s | A:%d X:%d Y: %d P: %d | DATA: 0x%x | ADDR: 0x%x\n",
-			 op_codes[opcode].name, CPU.A, CPU.X, CPU.Y, CPU.P.reg,
-			 fetched_data, fetched_addr);
-#endif
-		}
-	}
-
-	CPU.clock_cycles++;
-	if (CPU.clock_rcycles >= 0)
-		CPU.clock_rcycles--;
-
-	s_unlock(&cpu_lock);
-}
-
-/**
  * Trigger maskable interrupt
  */
 void cpu_trigger_irq(void)
@@ -1433,6 +1360,78 @@ int cpu_unregister_debug_cb(void)
 	return 0;
 }
 
+/**
+ * Performs one clock tick in the CPU
+ */
+void cpu_clock(void)
+{
+	int cross;
+
+	s_lock(&cpu_lock);
+
+	if (CPU.state == CPU_SUSPENDED) {
+		s_unlock(&cpu_lock);
+		return;
+	}
+
+	if (CPU.clock_rcycles <= 0) {
+		/* If the CPU was requested to suspend, now it's the time to go
+		 * offline
+		 */
+		if (CPU.state == CPU_REQ_SUSPEND) {
+			CPU.state = CPU_SUSPENDED;
+			s_unlock(&cpu_lock);
+			return;
+		}
+
+		/* If some interrupt was triggered, it should wait for current
+		 * instruction to finish in order to jump to server the interrupt.
+		 * NMI has priority over masked interrupt.
+		 */
+		if (CPU.nmi_trigger > 0) {
+			do_nmi();
+		} else if (CPU.irq_trigger > 0 && !CPU.P.flags.I) {
+			do_irq();
+		} else {
+			/* Each instruction takes different amount of clock cycles to be
+			 * executed. However, in this emulation the instruction will be
+			 * executed at once and will do nothing on the remaining cycles.
+			 */
+			opcode   = sbus_read(CPU.PC++);
+			addrmode = op_codes[opcode].mode;
+
+			/* Fetch operands and decode instruction */
+			cross = fetch_operand(op_codes[opcode].mode);
+			CPU.clock_rcycles = op_codes[opcode].clock_cycles;
+
+			/* Check if need to add a cycle */
+			if (cross && op_codes[opcode].add_cycles == 1)
+				CPU.clock_rcycles++;
+
+			/* Execute instruction */
+			op_codes[opcode].instruction();
+			if (cpu_debug_cb != NULL) {
+				state_info.opcode      = opcode;
+				state_info.opcode_name = op_codes[opcode].name;
+				state_info.address     = fetched_addr;
+				state_info.data        = fetched_data;
+				state_info.CPU         = CPU;
+				cpu_debug_cb(state_info);
+			}
+#ifdef CPU_PRINT_INSTRUCTION
+			printf("%s | A:%d X:%d Y: %d P: %d | DATA: 0x%x | ADDR: 0x%x\n",
+			 op_codes[opcode].name, CPU.A, CPU.X, CPU.Y, CPU.P.reg,
+			 fetched_data, fetched_addr);
+#endif
+		}
+	}
+
+	CPU.clock_cycles++;
+	if (CPU.clock_rcycles >= 0)
+		CPU.clock_rcycles--;
+
+	s_unlock(&cpu_lock);
+}
 
 #ifdef CPU_TEST_CODE
 #include <unistd.h>
