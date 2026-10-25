@@ -1075,6 +1075,12 @@ static int fetch_operand(enum _addr_modes mode)
 		if ((addr & 0xff00) != bah)
 			cross = 1;
 
+		/* We need to perform a dummy read when page crossing for read
+		 * instructions (differentiated by the add cycles == 0).
+		 */
+		if (cross || op_codes[opcode].add_cycles == 0)
+			sbus_read((uint16_t)((bah & 0xff00) | (addr & 0x00ff)));
+
 		/* Fetches the data */
 		fetched_addr = addr;
 		break;
@@ -1088,6 +1094,10 @@ static int fetch_operand(enum _addr_modes mode)
 		/* Check for page crossing */
 		if ((addr & 0xff00) != bah)
 			cross = 1;
+
+		/* Dummy read as in abs,x */
+		if (cross || op_codes[opcode].add_cycles == 0)
+			sbus_read((uint16_t)((bah & 0xff00) | (addr & 0x00ff)));
 
 		/* Fetches the data */
 		fetched_addr = addr;
@@ -1111,6 +1121,10 @@ static int fetch_operand(enum _addr_modes mode)
 		/* Check for page crossing */
 		if ((addr & 0xff00) != bah)
 			cross = 1;
+
+		/* Dummy read as in abs,x */
+		if (cross || op_codes[opcode].add_cycles == 0)
+			sbus_read((uint16_t)((bah & 0xff00) | (addr & 0x00ff)));
 
 		fetched_addr = addr;
 		break;
