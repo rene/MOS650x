@@ -571,7 +571,7 @@ static void PLA(void)
 
 static void PLP(void)
 {
-	CPU.P.reg = S_POP();
+	CPU.P.reg = (S_POP() | EXP_FLAG_MASK) & (uint8_t)(~BRK_FLAG_MASK);
 }
 
 static void ROL(void)
@@ -622,7 +622,7 @@ static void RTI(void)
 	uint16_t addr;
 	uint8_t pch, pcl;
 
-	CPU.P.reg = S_POP();
+	CPU.P.reg = (S_POP() | EXP_FLAG_MASK) & (uint8_t)(~BRK_FLAG_MASK);
 	pcl  = S_POP();
 	pch  = S_POP();
 	addr = (((uint16_t)pch << 8) & 0xff00) | ((uint16_t)pcl & 0x00ff);
@@ -1254,7 +1254,7 @@ void cpu_reset(void)
 	CPU.X = 0;
 	CPU.Y = 0;
 	CPU.S = 0xfd;
-	CPU.P.reg = 0x34;
+	CPU.P.reg = 0x24;
 
 	/* Fetch initial vectors */
 	adl = sbus_read(0xfffc);
