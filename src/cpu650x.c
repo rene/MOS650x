@@ -1007,7 +1007,8 @@ static int fetch_operand(enum _addr_modes mode)
 
 	switch (mode) {
 	case mIMP:
-		/* Nothing to do */
+		/* Performs a dummy fetch */
+		sbus_read(CPU.PC);
 		break;
 
 	case mIMM:
